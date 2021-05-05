@@ -1,0 +1,4 @@
+1.0.1: First version of PrintfulAPI
+1.0.2:
+    - Created PrintfulAPI Models
+    - create_printfuls_table.php
