@@ -119,6 +119,40 @@ class Plugin extends PluginBase
             }
         }
 
+        function getProductVariantOptions() {
+
+            // Get the current product. It's pretty hacky, but it works
+            $url = url()->current();
+            $currentProduct    = preg_replace('/\D/', '', $url);
+            $printfulProductID = ProductModel::where('id', $currentProduct)->get()[0]->printful_product_id;
+
+
+            $apiKey = env('PRINTFUL_API_KEY', '');
+
+            // create ApiClient
+            $pf = new PrintfulApiClient($apiKey);
+
+            // declare array
+            $printfulVariantOptions = [];
+
+            // load variant options only if printful product id is set
+            if(!empty($printfulProductID)) {
+                $pfVariantOptions = $pf->get('/products' . '/' . $printfulProductID);
+
+
+                foreach ($pfVariantOptions['product']['files'] as $pfVariantOption) {
+
+
+                    $printfulVariantOptions[] = [
+                        'name' => $pfVariantOption['title'],
+                        'type'   => $pfVariantOption['type'],
+                    ];
+                }
+
+                return $printfulVariantOptions;
+            }
+        }
+
         function getPrintFiles() {
 
             // Get the current product. It's pretty hacky, but it works
