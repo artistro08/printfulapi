@@ -87,11 +87,12 @@ class Plugin extends PluginBase
             return $printfulProducts;
         }
 
-        function getProductVariants() {
+        function getProductVariants()
+        {
 
             // Get the current product. It's pretty hacky, but it works
             $url = url()->current();
-            $currentProduct    = preg_replace('/\D/', '', $url);
+            $currentProduct = preg_replace('/\D/', '', $url);
             $printfulProductID = ProductModel::where('id', $currentProduct)->get()[0]->printful_product_id;
 
 
@@ -104,52 +105,18 @@ class Plugin extends PluginBase
             $printfulVariants = [];
 
             // load variants only if printful product id is set
-            if(!empty($printfulProductID)) {
+            if (!empty($printfulProductID)) {
                 $pfVariants = $pf->get('/products' . '/' . $printfulProductID);
 
                 foreach ($pfVariants['variants'] as $pfVariant) {
 
                     $printfulVariants[] = [
                         'name' => $pfVariant['name'],
-                        'id'   => $pfVariant['id'],
+                        'id' => $pfVariant['id'],
                     ];
                 }
                 array_unshift($printfulVariants, ['name' => 'None', 'id' => '']);
                 return $printfulVariants;
-            }
-        }
-
-        function getProductVariantOptions() {
-
-            // Get the current product. It's pretty hacky, but it works
-            $url = url()->current();
-            $currentProduct    = preg_replace('/\D/', '', $url);
-            $printfulProductID = ProductModel::where('id', $currentProduct)->get()[0]->printful_product_id;
-
-
-            $apiKey = env('PRINTFUL_API_KEY', '');
-
-            // create ApiClient
-            $pf = new PrintfulApiClient($apiKey);
-
-            // declare array
-            $printfulVariantOptions = [];
-
-            // load variant options only if printful product id is set
-            if(!empty($printfulProductID)) {
-                $pfVariantOptions = $pf->get('/products' . '/' . $printfulProductID);
-
-
-                foreach ($pfVariantOptions['product']['files'] as $pfVariantOption) {
-
-
-                    $printfulVariantOptions[] = [
-                        'name' => $pfVariantOption['title'],
-                        'type'   => $pfVariantOption['type'],
-                    ];
-                }
-
-                return $printfulVariantOptions;
             }
         }
 
@@ -177,9 +144,50 @@ class Plugin extends PluginBase
             return $printFiles;
         }
 
-        // extend the product model for multiple file uploads
+        function getProductVariantOptions() {
+
+            // Get the current product. It's pretty hacky, but it works
+            $url = url()->current();
+            $currentProduct    = preg_replace('/\D/', '', $url);
+            $printfulProductID = ProductModel::where('id', $currentProduct)->get()[0]->printful_product_id;
+
+
+            $apiKey = env('PRINTFUL_API_KEY', '');
+
+            // create ApiClient
+            $pf = new PrintfulApiClient($apiKey);
+
+            // declare array
+            $printfulVariantOptions = [];
+
+            // load variant options only if printful product id is set
+            if(!empty($printfulProductID)) {
+                $pfVariantOptions = $pf->get('/products' . '/' . $printfulProductID);
+
+
+                foreach ($pfVariantOptions['product']['files'] as $pfVariantOption) {
+
+
+                    $printfulVariantOptions[] = [
+                        'id' => $pfVariantOption['type'],
+                        'name' => $pfVariantOption['title'],
+                    ];
+                }
+
+            }
+            return $printfulVariantOptions;
+        }
+
+
+        // extend the product model for multiple file uploads and jsonable properties
         ProductModel::extend(function($model) {
             $model->attachMany['print_files'] = File::class;
+        });
+
+        // extend the variant model for jsonable properties
+        VariantModel::extend(function($model) {
+            $model->addJsonable('printful_variant_placements');
+            $model->addJsonable('printful_variant_placement');
         });
 
         ProductsController::extendFormFields(function($form, $model){
@@ -226,36 +234,57 @@ class Plugin extends PluginBase
             if (getProductVariants() == null)
                 return;
 
-            $form->addTabFields([
-                'printful_variant_id' => [
-                    'label'   => 'Printful Variant',
-                    'tab'     => 'Printful Variant',
-                    'type'    => 'dropdown',
-                    'options' => array_pluck(getProductVariants(),'name','id'),
-                    'span'    => 'left'
+            if(!$form->isNested) {
+                $form->addTabFields([
+                    'printful_variant_id' => [
+                        'label'   => 'Printful Variant',
+                        'tab'     => 'Printful Variant',
+                        'type'    => 'dropdown',
+                        'options' => array_pluck(getProductVariants(),'name','id'),
+                        'span'    => 'full'
 
-                ],
-                'printful_variant_printfile' => [
-                    'label'   => 'Print Files',
-                    'tab'     => 'Printful Variant',
-                    'type'    => 'dropdown',
-                    'options' => array_pluck(getPrintFiles(),'name','url'),
-                    'span'    => 'right'
+                    ],
+                    'printful_variant_placements' => [
+                        'label'   => 'Variant Placements',
+                        'tab'     => 'Printful Variant',
+                        'type'    => 'repeater',
+                        'minItems' => 1,
+                        'maxItems' => count(getProductVariantOptions()),
+                        'form'    => [
+                            'fields' => [
+                                'printful_variant_placement' => [
+                                    'label' => 'Print Placement',
+                                    'tab'     => 'Printful Variant',
+                                    'type' => 'dropdown',
+                                    'options' => array_pluck(getProductVariantOptions(),  'name', 'id'),
+                                    'span' => 'left'
+                                ],
+                                'printful_variant_printfile' => [
+                                    'label' => 'Print File',
+                                    'tab'     => 'Printful Variant',
+                                    'type' => 'dropdown',
+                                    'options' => array_pluck(getPrintFiles(),'name','url'),
+                                    'span' => 'right'
+                                ],
+                                'printful_variant_option_id' => [
+                                    'label' => 'Option ID',
+                                    'tab'   => 'Printful Variant',
+                                    'type'  => 'text',
+                                    'span'  => 'left'
+                                ],
+                                'printful_variant_option_value' => [
+                                    'label' => 'Option Value',
+                                    'tab'   => 'Printful Variant',
+                                    'type'  => 'text',
+                                    'span'  => 'right'
+                                ],
+                            ]
+                        ],
+                    ],
 
-                ],
-                'printful_variant_option_id' => [
-                    'label' => 'Option ID',
-                    'tab'   => 'Printful Variant',
-                    'type'  => 'text',
-                    'span'  => 'left'
-                ],
-                'printful_variant_option_value' => [
-                    'label' => 'Option Value',
-                    'tab'   => 'Printful Variant',
-                    'type'  => 'text',
-                    'span'  => 'left'
-                ],
-            ]);
+                ]);
+            }
+
         });
 
         // Add columns to variant backend to quickly see if variant is set
