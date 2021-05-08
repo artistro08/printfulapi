@@ -17,13 +17,13 @@ class AddPrintfulVariantPlacements extends Migration
     public function down()
     {
         // variant drops
-        if (Schema::hasColumn('offline_mall_products', 'printful_variant_placements')) {
-            Schema::table('offline_mall_products', function ($table) {
+        if (Schema::hasColumn('offline_mall_product_variants', 'printful_variant_placements')) {
+            Schema::table('offline_mall_product_variants', function ($table) {
                 $table->dropColumn('printful_variant_placements');
             });
         }
-        if (Schema::hasColumn('offline_mall_products', 'printful_variant_placement')) {
-            Schema::table('offline_mall_products', function ($table) {
+        if (Schema::hasColumn('offline_mall_product_variants', 'printful_variant_placement')) {
+            Schema::table('offline_mall_product_variants', function ($table) {
                 $table->dropColumn('printful_variant_placement');
             });
         }

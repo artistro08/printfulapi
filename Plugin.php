@@ -173,7 +173,6 @@ class Plugin extends PluginBase
                         'name' => $pfVariantOption['title'],
                     ];
                 }
-
             }
             return $printfulVariantOptions;
         }
