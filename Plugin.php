@@ -8,6 +8,7 @@ use OFFLINE\Mall\Models\Variant as VariantModel;
 use System\Classes\PluginBase;
 use Printful\PrintfulApiClient;
 use System\Models\File;
+use Cache;
 
 
 /**
@@ -65,22 +66,21 @@ class Plugin extends PluginBase
             $printfulProducts = [];
 
             // attempt to load from cache
-            $pfProducts = cache()->get('printful_products');
+            $pfProducts = Cache::get('printful_products');
 
             if(!$pfProducts) {
                 // no cache found, fetch new
                 $pfProducts = $pf->get('/products');
 
                 // cache for 1hr
-                cache()->put('printful_products',$pfProducts,2592000);
+                Cache::put('printful_products',$pfProducts,2592000);
             }
 
             foreach ($pfProducts as $pfProduct) {
 
-
                 $printfulProducts[] = [
                     'name' => ltrim($pfProduct['brand'] . " " . $pfProduct['model']),
-                    'id' => $pfProduct['id'],
+                    'id'   => $pfProduct['id'],
                 ];
             }
             array_unshift($printfulProducts, ['name' => 'None', 'id' => '']);
@@ -112,7 +112,7 @@ class Plugin extends PluginBase
 
                     $printfulVariants[] = [
                         'name' => $pfVariant['name'],
-                        'id' => $pfVariant['id'],
+                        'id'   => $pfVariant['id'],
                     ];
                 }
                 array_unshift($printfulVariants, ['name' => 'None', 'id' => '']);
@@ -169,7 +169,7 @@ class Plugin extends PluginBase
 
 
                     $printfulVariantOptions[] = [
-                        'id' => $pfVariantOption['type'],
+                        'id'   => $pfVariantOption['type'],
                         'name' => $pfVariantOption['title'],
                     ];
                 }
@@ -244,46 +244,47 @@ class Plugin extends PluginBase
 
                     ],
                     'printful_variant_placements' => [
-                        'label'   => 'Variant Placements',
-                        'tab'     => 'Printful Variant',
-                        'type'    => 'repeater',
+                        'label'    => 'Variant Placements',
+                        'tab'      => 'Printful Variant',
+                        'type'     => 'repeater',
                         'minItems' => 1,
                         'maxItems' => count(getProductVariantOptions()),
-                        'form'    => [
+                        'form'     => [
                             'fields' => [
                                 'printful_variant_placement' => [
-                                    'label' => 'Print Placement',
+                                    'label'   => 'Print Placement',
                                     'tab'     => 'Printful Variant',
-                                    'type' => 'dropdown',
+                                    'type'    => 'dropdown',
                                     'options' => array_pluck(getProductVariantOptions(),  'name', 'id'),
-                                    'span' => 'left'
+                                    'span'    => 'left'
                                 ],
                                 'printful_variant_printfile' => [
-                                    'label' => 'Print File',
+                                    'label'   => 'Print File',
                                     'tab'     => 'Printful Variant',
-                                    'type' => 'dropdown',
+                                    'type'    => 'dropdown',
                                     'options' => array_pluck(getPrintFiles(),'name','url'),
-                                    'span' => 'right'
+                                    'span'    => 'right'
                                 ],
                                 'printful_variant_option_id' => [
-                                    'label' => 'Option ID',
-                                    'tab'   => 'Printful Variant',
-                                    'type'  => 'text',
-                                    'span'  => 'left'
+                                    'label'       => 'Option ID',
+                                    'commentHtml' => true,
+                                    'comment'     => 'An optional ID parameter for advanced users. <a href="https://www.printful.com/docs/products" target="_blank">See Docs</a>',
+                                    'tab'         => 'Printful Variant',
+                                    'type'        => 'text',
+                                    'span'        => 'left'
                                 ],
                                 'printful_variant_option_value' => [
-                                    'label' => 'Option Value',
-                                    'tab'   => 'Printful Variant',
-                                    'type'  => 'text',
-                                    'span'  => 'right'
+                                    'label'     => 'Option Value',
+                                    'tab'       => 'Printful Variant',
+                                    'comment'   => 'An optional value for advanced users.',
+                                    'type'      => 'text',
+                                    'span'      => 'right'
                                 ],
                             ]
                         ],
                     ],
-
                 ]);
             }
-
         });
 
         // Add columns to variant backend to quickly see if variant is set
@@ -317,17 +318,31 @@ class Plugin extends PluginBase
                     continue;
                 }
 
+                $placements = $product->variant->printful_variant_placements;
+
+
+
+                if(is_array($placements) || is_object($placements)) {
+                    foreach ($placements as $placement) {
+                        $filePlacements[] = [
+                            'type' => $placement['printful_variant_placement'],
+                            'url' => $placement['printful_variant_printfile'],
+                            'options' => [
+                                'id' => $placement['printful_variant_option_id'],
+                                'value' => $placement['printful_variant_option_value']
+                            ],
+                        ];
+                    }
+                }
+
+
                 // append to the array
                 $order_items[] = [
                     'variant_id'   => $product->variant->printful_variant_id,
                     'name'         => $product->product->name, // Display name
                     'retail_price' => $product->price['USD'], // Retail price for packing slip
                     'quantity'     => $product->product->quantity,
-                    'files' => [
-                        [
-                            'url' => $product->variant->printful_variant_printfile,
-                        ],
-                    ],
+                    'files' => $filePlacements,
                 ];
             }
 
