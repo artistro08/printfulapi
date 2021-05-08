@@ -3,3 +3,6 @@
     - Created PrintfulAPI Models
     - create_printfuls_table.php
 1.0.3: Version bump
+1.0.4:
+    - Added print placement to variants
+    - add_printful_variant_placements.php
