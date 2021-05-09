@@ -10,3 +10,4 @@
 1.0.6: fix version types
 1.0.7: remove remnant code
 1.0.8: Added external ids to variants when synced
+1.0.9: fix variant issue
