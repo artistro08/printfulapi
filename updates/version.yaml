@@ -6,3 +6,4 @@
 1.0.4:
     - Added print placement to variants
     - add_printful_variant_placements.php
+1.0.5: Fix bug where mutiple types of files were being assinged incorrectly
