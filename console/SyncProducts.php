@@ -46,7 +46,7 @@ class SyncProducts extends Command
                 // create a fresh variant container for each product
                 $sync_variants = [];
 
-                $filePlacements = [];
+
                 // Continue if we have a printful product id for the product
                 if(empty($product->printful_product_id)){
                     continue;
@@ -55,6 +55,7 @@ class SyncProducts extends Command
                 foreach ($product->variants as $variant) {
 
                     $placements = $variant->printful_variant_placements;
+                    $filePlacements = [];
 
 
                     if(is_array($placements) || is_object($placements)) {
@@ -68,6 +69,7 @@ class SyncProducts extends Command
                                 ],
                             ];
                         }
+
                     }
 
 
@@ -75,6 +77,8 @@ class SyncProducts extends Command
                     // Continue if the variants have printful product ids
                     if(!empty($variant->printful_variant_id)) {
                         $printFiles = $variant->printful_variant_printfile;
+
+
 
                         $price = str_replace('$', '', $variant->price['USD']);
 
@@ -90,6 +94,7 @@ class SyncProducts extends Command
                                 ]
                             ]
                         ];
+                        dump($sync_variants);
                     }
                 }
 
