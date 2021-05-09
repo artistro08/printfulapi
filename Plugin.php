@@ -8,6 +8,7 @@ use OFFLINE\Mall\Models\Variant as VariantModel;
 use System\Classes\PluginBase;
 use Printful\PrintfulApiClient;
 use System\Models\File;
+use Cache;
 
 
 /**
@@ -65,33 +66,33 @@ class Plugin extends PluginBase
             $printfulProducts = [];
 
             // attempt to load from cache
-            $pfProducts = cache()->get('printful_products');
+            $pfProducts = Cache::get('printful_products');
 
             if(!$pfProducts) {
                 // no cache found, fetch new
                 $pfProducts = $pf->get('/products');
 
                 // cache for 1hr
-                cache()->put('printful_products',$pfProducts,2592000);
+                Cache::put('printful_products',$pfProducts,2592000);
             }
 
             foreach ($pfProducts as $pfProduct) {
 
-
                 $printfulProducts[] = [
                     'name' => ltrim($pfProduct['brand'] . " " . $pfProduct['model']),
-                    'id' => $pfProduct['id'],
+                    'id'   => $pfProduct['id'],
                 ];
             }
             array_unshift($printfulProducts, ['name' => 'None', 'id' => '']);
             return $printfulProducts;
         }
 
-        function getProductVariants() {
+        function getProductVariants()
+        {
 
             // Get the current product. It's pretty hacky, but it works
             $url = url()->current();
-            $currentProduct    = preg_replace('/\D/', '', $url);
+            $currentProduct = preg_replace('/\D/', '', $url);
             $printfulProductID = ProductModel::where('id', $currentProduct)->get()[0]->printful_product_id;
 
 
@@ -104,8 +105,17 @@ class Plugin extends PluginBase
             $printfulVariants = [];
 
             // load variants only if printful product id is set
-            if(!empty($printfulProductID)) {
-                $pfVariants = $pf->get('/products' . '/' . $printfulProductID);
+            if (!empty($printfulProductID)) {
+                // attempt to load from cache
+                $pfVariants = Cache::get('printful_variants');
+
+                if(!$pfVariants) {
+                    // no cache found, fetch new
+                    $pfVariants = $pf->get('/products' . '/' . $printfulProductID);
+
+                    // cache for 30 days
+                    Cache::put('printful_variants',$pfVariants,2592000);
+                }
 
                 foreach ($pfVariants['variants'] as $pfVariant) {
 
@@ -143,9 +153,67 @@ class Plugin extends PluginBase
             return $printFiles;
         }
 
-        // extend the product model for multiple file uploads
+        function getProductVariantOptions() {
+
+            // Get the current product. It's pretty hacky, but it works
+            $url = url()->current();
+            $currentProduct    = preg_replace('/\D/', '', $url);
+            $printfulProductID = ProductModel::where('id', $currentProduct)->get()[0]->printful_product_id;
+
+
+            $apiKey = env('PRINTFUL_API_KEY', '');
+
+            // create ApiClient
+            $pf = new PrintfulApiClient($apiKey);
+
+            // declare array
+            $printfulVariantOptions = [];
+
+            // load variant options only if printful product id is set
+            if(!empty($printfulProductID)) {
+                $pfVariantOptions = Cache::get('printful_variant_options');
+
+                if(!$pfVariantOptions) {
+                    // no cache found, fetch new
+                    $pfVariantOptions = $pf->get('/products' . '/' . $printfulProductID);
+
+                    // cache for 30 days
+                    Cache::put('printful_variant_options',$pfVariantOptions,2592000);
+                }
+
+
+                foreach ($pfVariantOptions['product']['files'] as $pfVariantOption) {
+
+
+                    $printfulVariantOptions[] = [
+                        'id'   => $pfVariantOption['type'],
+                        'name' => $pfVariantOption['title'],
+                    ];
+                }
+            }
+            return $printfulVariantOptions;
+        }
+
+
+        // extend the product model for multiple file uploads and jsonable properties
+        // also clear the cache if the product variant is updated.
         ProductModel::extend(function($model) {
             $model->attachMany['print_files'] = File::class;
+            $model->bindEvent('model.afterSave', function() use ($model) {
+                if($model->printful_product_id !== $model->getOriginal()['printful_product_id']) {
+                    Cache::forget('printful_variants');
+                    Cache::forget('printful_variant_options');
+                    \DB::table('offline_mall_product_variants')
+                        ->where('product_id', $model->product_id)
+                        ->update(['printful_variant_placements' => []]);
+                }
+            });
+        });
+
+        // extend the variant model for jsonable properties
+        VariantModel::extend(function($model) {
+            $model->addJsonable('printful_variant_placements');
+            $model->addJsonable('printful_variant_placement');
         });
 
         ProductsController::extendFormFields(function($form, $model){
@@ -155,18 +223,21 @@ class Plugin extends PluginBase
 
             $form->addTabFields([
                 'printful_product_id' => [
-                    'label'   => 'Printful Product',
-                    'tab'     => 'Printful',
-                    'type'    => 'dropdown',
-                    'options' =>  array_pluck(getProductCatalog(),'name','id'),
-                    'span'    => 'left'
+                    'label'       => 'Printful Product',
+                    'tab'         => 'Printful',
+                    'type'        => 'dropdown',
+                    'options'     =>  array_pluck(getProductCatalog(),'name','id'),
+                    'span'        => 'left',
+                    'comment'     => 'Set the global product type. <br><br> WARNING, changing this will reset all variants',
+                    'commentHtml' => true,
 
                 ],
                 'print_files' => [
-                    'label' => 'Print Files',
-                    'tab'   => 'Printful',
-                    'type'  => 'fileupload',
-                    'span'  => 'right'
+                    'label'   => 'Print Files',
+                    'tab'     => 'Printful',
+                    'type'    => 'fileupload',
+                    'commentAbove' => 'Set the global print files. ',
+                    'span'    => 'right'
 
                 ],
             ]);
@@ -192,36 +263,59 @@ class Plugin extends PluginBase
             if (getProductVariants() == null)
                 return;
 
-            $form->addTabFields([
-                'printful_variant_id' => [
-                    'label'   => 'Printful Variant',
-                    'tab'     => 'Printful Variant',
-                    'type'    => 'dropdown',
-                    'options' => array_pluck(getProductVariants(),'name','id'),
-                    'span'    => 'left'
+            if(!$form->isNested) {
+                $form->addTabFields([
+                    'printful_variant_id' => [
+                        'label'   => 'Printful Variant',
+                        'tab'     => 'Printful Variant',
+                        'type'    => 'dropdown',
+                        'options' => array_pluck(getProductVariants(),'name','id'),
+                        'span'    => 'full'
 
-                ],
-                'printful_variant_printfile' => [
-                    'label'   => 'Print Files',
-                    'tab'     => 'Printful Variant',
-                    'type'    => 'dropdown',
-                    'options' => array_pluck(getPrintFiles(),'name','url'),
-                    'span'    => 'right'
-
-                ],
-                'printful_variant_option_id' => [
-                    'label' => 'Option ID',
-                    'tab'   => 'Printful Variant',
-                    'type'  => 'text',
-                    'span'  => 'left'
-                ],
-                'printful_variant_option_value' => [
-                    'label' => 'Option Value',
-                    'tab'   => 'Printful Variant',
-                    'type'  => 'text',
-                    'span'  => 'left'
-                ],
-            ]);
+                    ],
+                    'printful_variant_placements' => [
+                        'label'     => 'Variant Placements',
+                        'tab'       => 'Printful Variant',
+                        'dependsOn' => 'printful_variant_id',
+                        'type'      => 'repeater',
+                        'minItems'  => 1,
+                        'maxItems'  => count(getProductVariantOptions()),
+                        'form'      => [
+                            'fields' => [
+                                'printful_variant_placement' => [
+                                    'label'   => 'Print Placement',
+                                    'tab'     => 'Printful Variant',
+                                    'type'    => 'dropdown',
+                                    'options' => array_pluck(getProductVariantOptions(),  'name', 'id'),
+                                    'span'    => 'left'
+                                ],
+                                'printful_variant_printfile' => [
+                                    'label'   => 'Print File',
+                                    'tab'     => 'Printful Variant',
+                                    'type'    => 'dropdown',
+                                    'options' => array_pluck(getPrintFiles(),'name','url'),
+                                    'span'    => 'right'
+                                ],
+                                'printful_variant_option_id' => [
+                                    'label'       => 'Option ID',
+                                    'commentHtml' => true,
+                                    'comment'     => 'An optional ID parameter for advanced users. <a href="https://www.printful.com/docs/products" target="_blank">See Docs</a>',
+                                    'tab'         => 'Printful Variant',
+                                    'type'        => 'text',
+                                    'span'        => 'left'
+                                ],
+                                'printful_variant_option_value' => [
+                                    'label'     => 'Option Value',
+                                    'tab'       => 'Printful Variant',
+                                    'comment'   => 'An optional value for advanced users.',
+                                    'type'      => 'text',
+                                    'span'      => 'right'
+                                ],
+                            ]
+                        ],
+                    ],
+                ]);
+            }
         });
 
         // Add columns to variant backend to quickly see if variant is set
@@ -255,17 +349,31 @@ class Plugin extends PluginBase
                     continue;
                 }
 
+                $placements = $product->variant->printful_variant_placements;
+
+
+
+                if(is_array($placements) || is_object($placements)) {
+                    foreach ($placements as $placement) {
+                        $filePlacements[] = [
+                            'type' => $placement['printful_variant_placement'],
+                            'url' => $placement['printful_variant_printfile'],
+                            'options' => [
+                                'id' => $placement['printful_variant_option_id'],
+                                'value' => $placement['printful_variant_option_value']
+                            ],
+                        ];
+                    }
+                }
+
+
                 // append to the array
                 $order_items[] = [
                     'variant_id'   => $product->variant->printful_variant_id,
                     'name'         => $product->product->name, // Display name
                     'retail_price' => $product->price['USD'], // Retail price for packing slip
                     'quantity'     => $product->product->quantity,
-                    'files' => [
-                        [
-                            'url' => $product->variant->printful_variant_printfile,
-                        ],
-                    ],
+                    'files' => $filePlacements,
                 ];
             }
 

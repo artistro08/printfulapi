@@ -46,12 +46,31 @@ class SyncProducts extends Command
                 // create a fresh variant container for each product
                 $sync_variants = [];
 
+                $filePlacements = [];
                 // Continue if we have a printful product id for the product
                 if(empty($product->printful_product_id)){
                     continue;
                 }
 
                 foreach ($product->variants as $variant) {
+
+                    $placements = $variant->printful_variant_placements;
+
+
+                    if(is_array($placements) || is_object($placements)) {
+                        foreach ($placements as $placement) {
+                            $filePlacements[] = [
+                                'type' => $placement['printful_variant_placement'],
+                                'url' => $placement['printful_variant_printfile'],
+                                'options' => [
+                                    'id' => $placement['printful_variant_option_id'],
+                                    'value' => $placement['printful_variant_option_value']
+                                ],
+                            ];
+                        }
+                    }
+
+
 
                     // Continue if the variants have printful product ids
                     if(!empty($variant->printful_variant_id)) {
@@ -63,11 +82,7 @@ class SyncProducts extends Command
                         $sync_variants[] = [
                             'retail_price' => $price,                         // set retail price that this item is sold for (optional)
                             'variant_id'   => $variant->printful_variant_id, // set variant in from Printful Catalog(https://www.printful.com/docs/catalog)
-                            'files'        => [
-                                [
-                                    'url' => $printFiles,
-                                ],
-                            ],
+                            'files'        => $filePlacements,
                             'options' => [
                                 [
                                     'id'  => $variant->printful_variant_option_id,
