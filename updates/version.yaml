@@ -8,3 +8,4 @@
     - add_printful_variant_placements.php
 1.0.5: Fix bug where mutiple types of files were being assinged incorrectly
 1.0.6: fix version types
+1.0.7: remove remnant code

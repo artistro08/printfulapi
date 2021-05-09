@@ -94,7 +94,6 @@ class SyncProducts extends Command
                                 ]
                             ]
                         ];
-                        dump($sync_variants);
                     }
                 }
 
