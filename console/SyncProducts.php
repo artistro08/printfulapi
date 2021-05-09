@@ -44,8 +44,8 @@ class SyncProducts extends Command
             foreach ($products as $product) {
 
                 // create a fresh variant container for each product
-                $modify_variants[];
-                $create_variants[]
+                $modify_variants = [];
+                $create_variants = [];
 
 
                 // Continue if we have a printful product id for the product
@@ -124,7 +124,7 @@ class SyncProducts extends Command
                         'name'        => $product->name,
                         'thumbnail'   => $image,         // set thumbnail url
                     ],
-                    'sync_variants' => $sync_variants
+                    'sync_variants' => $modify_variants
                 ]);
 
                 $printfulProduct = $productsApi->updateProduct('@'.$product->id, $updateParams);
