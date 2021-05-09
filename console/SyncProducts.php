@@ -46,7 +46,7 @@ class SyncProducts extends Command
                 // create a fresh variant container for each product
                 $sync_variants = [];
 
-                ;
+
                 // Continue if we have a printful product id for the product
                 if(empty($product->printful_product_id)){
                     continue;
