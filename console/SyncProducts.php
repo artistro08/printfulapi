@@ -83,7 +83,20 @@ class SyncProducts extends Command
                         $price = str_replace('$', '', $variant->price['USD']);
 
 
-                        $sync_variants[] = [
+                        $modify_variants[] = [
+                            'id'           => '@'.$variant->id,
+                            'retail_price' => $price,                         // set retail price that this item is sold for (optional)
+                            'variant_id'   => $variant->printful_variant_id, // set variant in from Printful Catalog(https://www.printful.com/docs/catalog)
+                            'files'        => $filePlacements,
+                            'options' => [
+                                [
+                                    'id'  => $variant->printful_variant_option_id,
+                                    'value' => $variant->printful_variant_option_value,
+                                ]
+                            ]
+                        ];
+                        $create_variants[] = [
+                            'external_id'  => $variant->id,
                             'retail_price' => $price,                         // set retail price that this item is sold for (optional)
                             'variant_id'   => $variant->printful_variant_id, // set variant in from Printful Catalog(https://www.printful.com/docs/catalog)
                             'files'        => $filePlacements,
@@ -126,7 +139,7 @@ class SyncProducts extends Command
                         'name'        => $product->name,
                         'thumbnail'   => $image,           // set thumbnail url
                     ],
-                    'sync_variants' => $sync_variants
+                    'sync_variants' => $create_variants
                 ]);
 
                 $printfulProduct = $productsApi->createProduct($creationParams);
@@ -134,7 +147,7 @@ class SyncProducts extends Command
             else {
                 // shit out of luck..
                 $this->error($e->getCode().' error encountered.');
-                throw new Exception('Printful response of '.$e->getCode().' has been encountered');
+                throw new Exception($e->getMessage());
             }
 
 
