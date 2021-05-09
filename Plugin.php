@@ -106,7 +106,16 @@ class Plugin extends PluginBase
 
             // load variants only if printful product id is set
             if (!empty($printfulProductID)) {
-                $pfVariants = $pf->get('/products' . '/' . $printfulProductID);
+                // attempt to load from cache
+                $pfVariants = Cache::get('printful_variants');
+
+                if(!$pfVariants) {
+                    // no cache found, fetch new
+                    $pfVariants = $pf->get('/products' . '/' . $printfulProductID);
+
+                    // cache for 30 days
+                    Cache::put('printful_variants',$pfVariants,2592000);
+                }
 
                 foreach ($pfVariants['variants'] as $pfVariant) {
 
@@ -162,7 +171,15 @@ class Plugin extends PluginBase
 
             // load variant options only if printful product id is set
             if(!empty($printfulProductID)) {
-                $pfVariantOptions = $pf->get('/products' . '/' . $printfulProductID);
+                $pfVariantOptions = Cache::get('printful_variant_options');
+
+                if(!$pfVariantOptions) {
+                    // no cache found, fetch new
+                    $pfVariantOptions = $pf->get('/products' . '/' . $printfulProductID);
+
+                    // cache for 30 days
+                    Cache::put('printful_variant_options',$pfVariantOptions,2592000);
+                }
 
 
                 foreach ($pfVariantOptions['product']['files'] as $pfVariantOption) {
@@ -179,8 +196,18 @@ class Plugin extends PluginBase
 
 
         // extend the product model for multiple file uploads and jsonable properties
+        // also clear the cache if the product variant is updated.
         ProductModel::extend(function($model) {
             $model->attachMany['print_files'] = File::class;
+            $model->bindEvent('model.afterSave', function() use ($model) {
+                if($model->printful_product_id !== $model->getOriginal()['printful_product_id']) {
+                    Cache::forget('printful_variants');
+                    Cache::forget('printful_variant_options');
+                    \DB::table('offline_mall_product_variants')
+                        ->where('product_id', $model->product_id)
+                        ->update(['printful_variant_placements' => []]);
+                }
+            });
         });
 
         // extend the variant model for jsonable properties
@@ -196,18 +223,21 @@ class Plugin extends PluginBase
 
             $form->addTabFields([
                 'printful_product_id' => [
-                    'label'   => 'Printful Product',
-                    'tab'     => 'Printful',
-                    'type'    => 'dropdown',
-                    'options' =>  array_pluck(getProductCatalog(),'name','id'),
-                    'span'    => 'left'
+                    'label'       => 'Printful Product',
+                    'tab'         => 'Printful',
+                    'type'        => 'dropdown',
+                    'options'     =>  array_pluck(getProductCatalog(),'name','id'),
+                    'span'        => 'left',
+                    'comment'     => 'Set the global product type. <br><br> WARNING, changing this will reset all variants',
+                    'commentHtml' => true,
 
                 ],
                 'print_files' => [
-                    'label' => 'Print Files',
-                    'tab'   => 'Printful',
-                    'type'  => 'fileupload',
-                    'span'  => 'right'
+                    'label'   => 'Print Files',
+                    'tab'     => 'Printful',
+                    'type'    => 'fileupload',
+                    'commentAbove' => 'Set the global print files. ',
+                    'span'    => 'right'
 
                 ],
             ]);
@@ -244,12 +274,13 @@ class Plugin extends PluginBase
 
                     ],
                     'printful_variant_placements' => [
-                        'label'    => 'Variant Placements',
-                        'tab'      => 'Printful Variant',
-                        'type'     => 'repeater',
-                        'minItems' => 1,
-                        'maxItems' => count(getProductVariantOptions()),
-                        'form'     => [
+                        'label'     => 'Variant Placements',
+                        'tab'       => 'Printful Variant',
+                        'dependsOn' => 'printful_variant_id',
+                        'type'      => 'repeater',
+                        'minItems'  => 1,
+                        'maxItems'  => count(getProductVariantOptions()),
+                        'form'      => [
                             'fields' => [
                                 'printful_variant_placement' => [
                                     'label'   => 'Print Placement',
