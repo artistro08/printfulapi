@@ -44,7 +44,8 @@ class SyncProducts extends Command
             foreach ($products as $product) {
 
                 // create a fresh variant container for each product
-                $sync_variants = [];
+                $modify_variants[];
+                $create_variants[]
 
 
                 // Continue if we have a printful product id for the product
