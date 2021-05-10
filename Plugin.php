@@ -57,7 +57,6 @@ class Plugin extends PluginBase
     public function boot()
     {
 
-
         function getProductCatalog() {
             $apiKey = env('PRINTFUL_API_KEY', '');
 
@@ -172,6 +171,7 @@ class Plugin extends PluginBase
 
             // load variant options only if printful product id is set
             if(!empty($printfulProductID)) {
+
                 $pfVariantOptions = Cache::get('printful_variant_options');
 
                 if(!$pfVariantOptions) {
@@ -184,8 +184,6 @@ class Plugin extends PluginBase
 
 
                 foreach ($pfVariantOptions['product']['files'] as $pfVariantOption) {
-
-
                     $printfulVariantOptions[] = [
                         'id'   => $pfVariantOption['type'],
                         'name' => $pfVariantOption['title'],
@@ -211,7 +209,7 @@ class Plugin extends PluginBase
                     }
                 }
 
-
+                // Sync product after save if the the printful product ID is set. This command catches if the variants aren't sent
                 if(!empty($model->printful_product_id)){
                     \Artisan::call('printfulapi:syncproducts');
                 }
@@ -246,7 +244,6 @@ class Plugin extends PluginBase
                     'type'    => 'fileupload',
                     'commentAbove' => 'Set the global print files. ',
                     'span'    => 'right'
-
                 ],
             ]);
         });
@@ -280,7 +277,6 @@ class Plugin extends PluginBase
                         'options' => array_pluck(getProductVariants(),'name','id'),
                         'span'    => 'full',
                         'default' => '',
-
                     ],
                     'printful_variant_placements' => [
                         'label'     => 'Variant Placements',
@@ -361,7 +357,6 @@ class Plugin extends PluginBase
                 $placements = $product->variant->printful_variant_placements;
 
 
-
                 if(is_array($placements) || is_object($placements)) {
                     foreach ($placements as $placement) {
                         $filePlacements[] = [
@@ -374,7 +369,6 @@ class Plugin extends PluginBase
                         ];
                     }
                 }
-
 
                 // append to the array
                 $order_items[] = [

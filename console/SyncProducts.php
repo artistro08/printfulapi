@@ -47,7 +47,6 @@ class SyncProducts extends Command
                 $modify_variants = [];
                 $create_variants = [];
 
-
                 // Continue if we have a printful product id for the product
                 if(empty($product->printful_product_id)){
                     continue;
@@ -57,7 +56,6 @@ class SyncProducts extends Command
 
                     $placements = $variant->printful_variant_placements;
                     $filePlacements = [];
-
 
                     if(is_array($placements) || is_object($placements)) {
                         foreach ($placements as $placement) {
@@ -70,19 +68,12 @@ class SyncProducts extends Command
                                 ],
                             ];
                         }
-
                     }
-
-
 
                     // Continue if the variants have printful product ids
                     if(!empty($variant->printful_variant_id)) {
 
-
-
-                        $price = str_replace('$', '', $variant->price[env('PRINTFUL_CURRENCY_CODE', 'USD')] ?? str_replace('$', '', $product->price[env('PRINTFUL_CURRENCY_CODE', 'USD')]));
-
-
+                        $price = preg_replace('/[^0-9,.]+/', '', $variant->price[env('PRINTFUL_CURRENCY_CODE', 'USD')] ?? preg_replace('/[^0-9,.]+/', '', $product->price[env('PRINTFUL_CURRENCY_CODE', 'USD')]));
 
                         $modify_variants[] = [
                             'id'           => '@'.$variant->id,
@@ -130,8 +121,6 @@ class SyncProducts extends Command
                     ]);
                     $printfulProduct = $productsApi->updateProduct('@'.$product->id, $updateParams);
                 }
-
-
             }
         } catch (PrintfulApiException $e) { // API response status code was not successful
 
@@ -155,7 +144,6 @@ class SyncProducts extends Command
                 throw new Exception($e->getMessage());
             }
 
-
         } catch (PrintfulSdkException $e) { // SDK did not call API
             echo 'Printful SDK Exception: ' . $e->getMessage() . PHP_EOL;
         } catch (PrintfulException $e) { // API call failed
@@ -164,7 +152,6 @@ class SyncProducts extends Command
         }
 
         $this->info('Products Synced successfully');
-
 
     }
     /**
