@@ -12,3 +12,4 @@
 1.0.8: Added external ids to variants when synced
 1.0.9: fix variant issue
 1.1.0: fix erronous code
+1.1.1: fix sync issue

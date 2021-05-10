@@ -369,7 +369,6 @@ class Plugin extends PluginBase
 
                 // append to the array
                 $order_items[] = [
-                    'external_id'  => $product->variant->id,
                     'variant_id'   => $product->variant->printful_variant_id,
                     'name'         => $product->product->name, // Display name
                     'retail_price' => $product->price['USD'], // Retail price for packing slip
