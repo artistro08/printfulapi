@@ -2,6 +2,7 @@
 
 
 use Illuminate\Support\Facades\Event;
+use October\Rain\Database\ModelException;
 use OFFLINE\Mall\Models\Product as ProductModel;
 use Offline\Mall\Controllers\Products as ProductsController;
 use OFFLINE\Mall\Models\Variant as VariantModel;
@@ -200,12 +201,19 @@ class Plugin extends PluginBase
         ProductModel::extend(function($model) {
             $model->attachMany['print_files'] = File::class;
             $model->bindEvent('model.afterSave', function() use ($model) {
-                if($model->printful_product_id !== $model->getOriginal()['printful_product_id']) {
-                    Cache::forget('printful_variants');
-                    Cache::forget('printful_variant_options');
-                    \DB::table('offline_mall_product_variants')
-                        ->where('product_id', $model->product_id)
-                        ->update(['printful_variant_placements' => []]);
+                if(!empty($model->getOriginal())) {
+                    if($model->printful_product_id !== $model->getOriginal()['printful_product_id']) {
+                        Cache::forget('printful_variants');
+                        Cache::forget('printful_variant_options');
+                        \DB::table('offline_mall_product_variants')
+                            ->where('product_id', $model->product_id)
+                            ->update(['printful_variant_placements' => []]);
+                    }
+                }
+
+
+                if(!empty($model->printful_product_id)){
+                    \Artisan::call('printfulapi:syncproducts');
                 }
             });
         });
@@ -270,7 +278,8 @@ class Plugin extends PluginBase
                         'tab'     => 'Printful Variant',
                         'type'    => 'dropdown',
                         'options' => array_pluck(getProductVariants(),'name','id'),
-                        'span'    => 'full'
+                        'span'    => 'full',
+                        'default' => '',
 
                     ],
                     'printful_variant_placements' => [
@@ -372,7 +381,7 @@ class Plugin extends PluginBase
                     'external_id'  => $product->variant->id,
                     'variant_id'   => $product->variant->printful_variant_id,
                     'name'         => $product->product->name, // Display name
-                    'retail_price' => $product->price['USD'], // Retail price for packing slip
+                    'retail_price' => $product->price[env('PRINTFUL_CURRENCY_CODE', 'USD')], // Retail price for packing slip
                     'quantity'     => $product->product->quantity,
                     'files' => $filePlacements,
                 ];
