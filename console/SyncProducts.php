@@ -44,8 +44,7 @@ class SyncProducts extends Command
             foreach ($products as $product) {
 
                 // create a fresh variant container for each product
-                $modify_variants = [];
-                $create_variants = [];
+                $sync_variants = [];
 
 
                 // Continue if we have a printful product id for the product
@@ -84,20 +83,7 @@ class SyncProducts extends Command
                         $price = str_replace('$', '', $variant->price['USD']);
 
 
-                        $modify_variants[] = [
-                            'id'           => '@'.$variant->id,
-                            'retail_price' => $price,                         // set retail price that this item is sold for (optional)
-                            'variant_id'   => $variant->printful_variant_id, // set variant in from Printful Catalog(https://www.printful.com/docs/catalog)
-                            'files'        => $filePlacements,
-                            'options' => [
-                                [
-                                    'id'  => $variant->printful_variant_option_id,
-                                    'value' => $variant->printful_variant_option_value,
-                                ]
-                            ]
-                        ];
-                        $create_variants[] = [
-                            'external_id'  => $variant->id,
+                        $sync_variants[] = [
                             'retail_price' => $price,                         // set retail price that this item is sold for (optional)
                             'variant_id'   => $variant->printful_variant_id, // set variant in from Printful Catalog(https://www.printful.com/docs/catalog)
                             'files'        => $filePlacements,
@@ -124,7 +110,7 @@ class SyncProducts extends Command
                         'name'        => $product->name,
                         'thumbnail'   => $image,         // set thumbnail url
                     ],
-                    'sync_variants' => $modify_variants
+                    'sync_variants' => $sync_variants
                 ]);
 
                 $printfulProduct = $productsApi->updateProduct('@'.$product->id, $updateParams);
@@ -140,7 +126,7 @@ class SyncProducts extends Command
                         'name'        => $product->name,
                         'thumbnail'   => $image,           // set thumbnail url
                     ],
-                    'sync_variants' => $create_variants
+                    'sync_variants' => $sync_variants
                 ]);
 
                 $printfulProduct = $productsApi->createProduct($creationParams);
