@@ -29,7 +29,7 @@ class SyncProducts extends Command
      */
     public function handle()
     {
-        echo "\n\e[32mSyncing Products...\n" . PHP_EOL;
+        $this->info('Syncing Products...');
         $apiKey = env('PRINTFUL_API_KEY', '');
         try {
             // create ApiClient
@@ -77,11 +77,11 @@ class SyncProducts extends Command
 
                     // Continue if the variants have printful product ids
                     if(!empty($variant->printful_variant_id)) {
-                        $printFiles = $variant->printful_variant_printfile;
 
 
 
-                        $price = str_replace('$', '', $variant->price['USD']);
+                        $price = str_replace('$', '', $variant->price[env('PRINTFUL_CURRENCY_CODE', 'USD')] ?? str_replace('$', '', $product->price[env('PRINTFUL_CURRENCY_CODE', 'USD')]));
+
 
 
                         $modify_variants[] = [
@@ -118,16 +118,20 @@ class SyncProducts extends Command
                     $image = '';
                 }
 
-                $updateParams = SyncProductUpdateParameters::fromArray([
-                    'sync_product'  => [
-                        'external_id' => $product->id,   // set id in my store for this product (optional)
-                        'name'        => $product->name,
-                        'thumbnail'   => $image,         // set thumbnail url
-                    ],
-                    'sync_variants' => $modify_variants
-                ]);
+                // don't continue if no variants.
+                if(!empty($modify_variants)){
+                    $updateParams = SyncProductUpdateParameters::fromArray([
+                        'sync_product'  => [
+                            'external_id' => $product->id,   // set id in my store for this product (optional)
+                            'name'        => $product->name,
+                            'thumbnail'   => $image,         // set thumbnail url
+                        ],
+                        'sync_variants' => $modify_variants
+                    ]);
+                    $printfulProduct = $productsApi->updateProduct('@'.$product->id, $updateParams);
+                }
 
-                $printfulProduct = $productsApi->updateProduct('@'.$product->id, $updateParams);
+
             }
         } catch (PrintfulApiException $e) { // API response status code was not successful
 
@@ -159,7 +163,7 @@ class SyncProducts extends Command
             var_export($pf->getLastResponseRaw()) . PHP_EOL;
         }
 
-        echo "\e[32mProducts Synced successfully\n" . PHP_EOL;
+        $this->info('Products Synced successfully');
 
 
     }
