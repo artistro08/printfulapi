@@ -13,3 +13,4 @@
 1.0.9: fix variant issue
 1.1.0: fix erronous code
 1.1.1: fix sync issue
+1.1.2: revert fix because it wasn't needed
