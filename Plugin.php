@@ -239,11 +239,12 @@ class Plugin extends PluginBase
 
                 ],
                 'print_files' => [
-                    'label'   => 'Print Files',
-                    'tab'     => 'Printful',
-                    'type'    => 'fileupload',
-                    'commentAbove' => 'Set the global print files. ',
-                    'span'    => 'right'
+                    'label'        => 'Print Files',
+                    'tab'          => 'Printful',
+                    'type'         => 'fileupload',
+                    'fileTypes'    => 'png,jpg,pdf,ai',
+                    'commentAbove' => 'Set the global print files. JPG, PNG, PDF, and AI are supported',
+                    'span'         => 'right'
                 ],
             ]);
         });
