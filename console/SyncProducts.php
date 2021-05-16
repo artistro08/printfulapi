@@ -121,6 +121,7 @@ class SyncProducts extends Command
                     ]);
                     $printfulProduct = $productsApi->updateProduct('@'.$product->id, $updateParams);
                 }
+                sleep(7);
             }
         } catch (PrintfulApiException $e) { // API response status code was not successful
 
@@ -137,6 +138,7 @@ class SyncProducts extends Command
                 ]);
 
                 $printfulProduct = $productsApi->createProduct($creationParams);
+                sleep(7);
             }
             else {
                 // shit out of luck..

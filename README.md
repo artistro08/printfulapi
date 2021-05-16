@@ -14,7 +14,7 @@ PRINTFUL_CONFIRM_ORDERS=0
 PRINTFUL_CURRENCY_CODE=USD
 ```
 
-To sync products to your store, run the command `php aritsan printfulapi:syncproducts` in your application's directory via command line. Alternatively, you can specify cron to run this command for you to keep your products up to date. The plugin automatically syncs the products on save as well.
+To sync products to your store, run the command `php aritsan printfulapi:syncproducts` in your application's directory via command line. Alternatively, you can specify cron to run this command for you to keep your products up to date.
 
 ## Other Notes
 This is a one way sync to Printful. It only syncs variants if the variant is selected in the backend.
