@@ -2,6 +2,7 @@
 
 
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 use October\Rain\Database\ModelException;
 use OFFLINE\Mall\Models\Product as ProductModel;
 use Offline\Mall\Controllers\Products as ProductsController;
@@ -9,6 +10,7 @@ use OFFLINE\Mall\Models\Variant as VariantModel;
 use System\Classes\PluginBase;
 use Printful\PrintfulApiClient;
 use System\Models\File;
+use Illuminate\Support\Facades\Artisan;
 use Cache;
 
 
@@ -208,11 +210,6 @@ class Plugin extends PluginBase
                             ->update(['printful_variant_placements' => []]);
                     }
                 }
-
-                // Sync product after save if the the printful product ID is set. This command catches if the variants aren't sent
-                if(!empty($model->printful_product_id)){
-                    \Artisan::call('printfulapi:syncproducts');
-                }
             });
         });
 
@@ -242,7 +239,7 @@ class Plugin extends PluginBase
                     'label'        => 'Print Files',
                     'tab'          => 'Printful',
                     'type'         => 'fileupload',
-                    'fileTypes'    => 'png,jpg,pdf,ai',
+                    'fileTypes'    => 'png,jpg,pdf,ai,eps,tiff',
                     'commentAbove' => 'Set the global print files. JPG, PNG, PDF, and AI are supported',
                     'span'         => 'right'
                 ],
