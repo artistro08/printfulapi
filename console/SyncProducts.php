@@ -31,17 +31,18 @@ class SyncProducts extends Command
     {
         $this->info('Syncing Products...');
         $apiKey = env('PRINTFUL_API_KEY', '');
-        try {
-            // create ApiClient
-            $pf = new PrintfulApiClient($apiKey);
+
+        // create ApiClient
+        $pf = new PrintfulApiClient($apiKey);
 
 
 
-            // create Products Api object
-            $productsApi = new PrintfulProducts($pf);
-            $products = Product::get();
+        // create Products Api object
+        $productsApi = new PrintfulProducts($pf);
+        $products = Product::get();
 
-            foreach ($products as $product) {
+        foreach ($products as $product) {
+            try {
 
                 // create a fresh variant container for each product
                 $modify_variants = [];
@@ -122,36 +123,39 @@ class SyncProducts extends Command
                     $printfulProduct = $productsApi->updateProduct('@'.$product->id, $updateParams);
                 }
                 sleep(7);
+
+            } catch (PrintfulApiException $e) { // API response status code was not successful
+
+                if($e->getCode() == '404') {
+
+                    // if product doesn't exist, create
+                    $creationParams  = SyncProductCreationParameters::fromArray([
+                        'sync_product'  => [
+                            'external_id' => $product->id,     // set id in my store for this product (optional)
+                            'name'        => $product->name,
+                            'thumbnail'   => $image,           // set thumbnail url
+                        ],
+                        'sync_variants' => $create_variants
+                    ]);
+
+                    $printfulProduct = $productsApi->createProduct($creationParams);
+                    sleep(7);
+                }
+                else {
+                    // shit out of luck..
+                    $this->error($e->getCode().' error encountered.');
+                    throw new Exception($e->getMessage());
+                }
+
+            } catch (PrintfulSdkException $e) { // SDK did not call API
+                echo 'Printful SDK Exception: ' . $e->getMessage() . PHP_EOL;
+            } catch (PrintfulException $e) { // API call failed
+                echo 'Printful Exception: ' . $e->getMessage() . PHP_EOL;
+                var_export($pf->getLastResponseRaw()) . PHP_EOL;
             }
-        } catch (PrintfulApiException $e) { // API response status code was not successful
-
-            if($e->getCode() == '404') {
-
-                // if product doesn't exist, create
-                $creationParams  = SyncProductCreationParameters::fromArray([
-                    'sync_product'  => [
-                        'external_id' => $product->id,     // set id in my store for this product (optional)
-                        'name'        => $product->name,
-                        'thumbnail'   => $image,           // set thumbnail url
-                    ],
-                    'sync_variants' => $create_variants
-                ]);
-
-                $printfulProduct = $productsApi->createProduct($creationParams);
-                sleep(7);
-            }
-            else {
-                // shit out of luck..
-                $this->error($e->getCode().' error encountered.');
-                throw new Exception($e->getMessage());
-            }
-
-        } catch (PrintfulSdkException $e) { // SDK did not call API
-            echo 'Printful SDK Exception: ' . $e->getMessage() . PHP_EOL;
-        } catch (PrintfulException $e) { // API call failed
-            echo 'Printful Exception: ' . $e->getMessage() . PHP_EOL;
-            var_export($pf->getLastResponseRaw()) . PHP_EOL;
         }
+
+
 
         $this->info('Products Synced successfully');
 
