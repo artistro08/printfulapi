@@ -1,8 +1,8 @@
 <?php namespace Artistro08\PrintfulAPI;
 
 
+use DB;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Queue;
 use October\Rain\Database\ModelException;
 use OFFLINE\Mall\Models\Product as ProductModel;
 use Offline\Mall\Controllers\Products as ProductsController;
@@ -205,10 +205,15 @@ class Plugin extends PluginBase
                     if($model->printful_product_id !== $model->getOriginal()['printful_product_id']) {
                         Cache::forget('printful_variants');
                         Cache::forget('printful_variant_options');
-                        \DB::table('offline_mall_product_variants')
+                        DB::table('offline_mall_product_variants')
                             ->where('product_id', $model->product_id)
                             ->update(['printful_variant_placements' => []]);
                     }
+                }
+
+                // Sync product after save if the the printful product ID is set. This command catches if the variants aren't sent.
+                if(!empty($model->printful_product_id)){
+                    Artisan::queue('printfulapi:syncproducts');
                 }
             });
         });
