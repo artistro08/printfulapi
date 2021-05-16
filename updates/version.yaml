@@ -22,3 +22,4 @@
 1.1.6: specify file types you can upload under the global files option
 1.1.7: Rate limit fix for syncing products
 1.1.8: sync all products with command
+1.1.9: add sync commands in the queue
