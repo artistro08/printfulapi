@@ -338,16 +338,17 @@ class Plugin extends PluginBase
             ]);
         });
 
-        Event::listen('mall.order.beforeCreate', function ($event) {
+        Event::listen('mall.order.afterCreate', function ($event, $order) {
             $confirm = env('PRINTFUL_CONFIRM_ORDERS', 0);
             $confirmOrder = intval($confirm);
             $apiKey = env('PRINTFUL_API_KEY', '');
             $pf = new PrintfulApiClient($apiKey);
-            $customer = $event->customer;
+            $customer = $order->customer;
+            $order_id = $event->id;
             // assemble the items array
             // create an empty array to store the items
             $order_items = [];
-            foreach ($event->products as $product) {
+            foreach ($order->products as $product) {
 
                 if(empty($product->product->printful_product_id)){
                     continue;
@@ -384,23 +385,42 @@ class Plugin extends PluginBase
                 ];
             }
 
+            $recipient = [
+                'name'         => $customer->firstname . ' ' . $customer->lastname,
+                'address1'     => $customer->shipping_address->lines,
+                'city'         => $customer->shipping_address->city,
+                'state_code'   => $customer->shipping_address->state_code,
+                'country_code' => $customer->shipping_address->country_code,
+                'zip'          => $customer->shipping_address->zip,
+            ];
+
+            $orderFinal = [
+                'external_id' => $order_id,
+                'recipient'   => $recipient,
+                'items'       => $order_items,
+                [
+                    'confirm' => $confirmOrder,
+                ],
+            ];
+
             if(empty($order_items))
                 return;
-            $pf->post('orders',
-                [
-                    'recipient' => [
-                        'name'         => $customer->firstname . ' ' . $customer->lastname,
-                        'address1'     => $customer->shipping_address->lines,
-                        'city'         => $customer->shipping_address->city,
-                        'state_code'   => $customer->shipping_address->state_code,
-                        'country_code' => $customer->shipping_address->country_code,
-                        'zip'          => $customer->shipping_address->zip,
-                    ],
-                    'items'    => $order_items,
-                ],
-                ['confirm' => $confirmOrder]
-            );
+
+            $pf->post('orders', $orderFinal);
+
+        });
+
+        Event::listen('mall.checkout.succeeded', function ($order) {
+
+            $confirm = env('PRINTFUL_CONFIRM_ORDERS', 0);
+            $confirmOrder = intval($confirm);
+            $apiKey = env('PRINTFUL_API_KEY', '');
+            $pf = new PrintfulApiClient($apiKey);
+            $order_id = $order->order->id;
+
+            if($confirmOrder == 1) {
+                $pf->post('orders/@' . $order_id . '/confirm' );
+            }
         });
     }
-
 }
