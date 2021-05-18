@@ -18,11 +18,11 @@ class SyncProducts extends Command
     /**
      * @var string The console command name.
      */
-    protected $name = 'printfulapi:syncproducts';
+    protected $name = 'printful:sync';
     /**
      * @var string The console command description.
      */
-    protected $description = 'Create products using the Printful E-Commerce Sync API';
+    protected $description = 'Create products in printful using the Printful E-Commerce Sync API';
     /**
      * Execute the console command.
      * @return void
@@ -120,7 +120,7 @@ class SyncProducts extends Command
                         ],
                         'sync_variants' => $modify_variants
                     ]);
-                    $printfulProduct = $productsApi->updateProduct('@'.$product->id, $updateParams);
+                    $productsApi->updateProduct('@'.$product->id, $updateParams);
                 }
                 sleep(7);
 
@@ -138,7 +138,7 @@ class SyncProducts extends Command
                         'sync_variants' => $create_variants
                     ]);
 
-                    $printfulProduct = $productsApi->createProduct($creationParams);
+                    $productsApi->createProduct($creationParams);
                     sleep(7);
                 }
                 else {
