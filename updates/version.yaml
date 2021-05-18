@@ -24,3 +24,8 @@
 1.1.8: sync all products with command
 1.1.9: add sync commands in the queue
 1.1.10: Only push orders to printful if checkout is successful and ENV check is is set
+1.1.11:
+    - Changed command to a more simple name.
+    - pushed api requests to a queue job.
+    - Added env variable to determine if products should sync on save.
+    - Updated README.md
