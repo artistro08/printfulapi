@@ -3,7 +3,6 @@
 
 use DB;
 use Illuminate\Support\Facades\Event;
-use October\Rain\Database\ModelException;
 use OFFLINE\Mall\Models\Product as ProductModel;
 use Offline\Mall\Controllers\Products as ProductsController;
 use OFFLINE\Mall\Models\Variant as VariantModel;
@@ -19,7 +18,7 @@ use Cache;
  */
 class Plugin extends PluginBase
 {
-    public $require = ['Offline.Mall'];
+    public $require = ['OFFLINE.Mall'];
     /**
      * Returns information about this plugin.
      *
@@ -31,7 +30,7 @@ class Plugin extends PluginBase
             'name'        => 'PrintfulAPI',
             'description' => 'Plugin to use API calls to make orders',
             'author'      => 'artistro08',
-            'icon'        => 'icon-leaf'
+            'icon'        => 'icon-refresh'
         ];
     }
 
@@ -212,8 +211,11 @@ class Plugin extends PluginBase
                 }
 
                 // Sync product after save if the the printful product ID is set. This command catches if the variants aren't sent.
+                $saveAttribute = env('PRINTFUL_SYNC_ON_SAVE', 1);
+                $syncOnSave = intval($saveAttribute);
                 if(!empty($model->printful_product_id)){
-                    Artisan::queue('printfulapi:syncproducts');
+                    if($syncOnSave == 1)
+                        Artisan::queue('printful:sync');
                 }
             });
         });
@@ -339,8 +341,8 @@ class Plugin extends PluginBase
         });
 
         Event::listen('mall.order.afterCreate', function ($event, $order) {
-            $confirm = env('PRINTFUL_CONFIRM_ORDERS', 0);
-            $confirmOrder = intval($confirm);
+
+            // Collect the information needed for the order
             $apiKey = env('PRINTFUL_API_KEY', '');
             $pf = new PrintfulApiClient($apiKey);
             $customer = $order->customer;
@@ -398,16 +400,16 @@ class Plugin extends PluginBase
                 'external_id' => $order_id,
                 'recipient'   => $recipient,
                 'items'       => $order_items,
-                [
-                    'confirm' => $confirmOrder,
-                ],
             ];
 
             if(empty($order_items))
                 return;
 
-            $pf->post('orders', $orderFinal);
 
+            // Send order request to the job queue
+            dispatch(function() use ($orderFinal, $pf) {
+                $pf->post('orders', $orderFinal);
+            });
         });
 
         Event::listen('mall.checkout.succeeded', function ($order) {
@@ -418,9 +420,12 @@ class Plugin extends PluginBase
             $pf = new PrintfulApiClient($apiKey);
             $order_id = $order->order->id;
 
-            if($confirmOrder == 1) {
-                $pf->post('orders/@' . $order_id . '/confirm' );
-            }
+            // Send order confirm request to the job queue
+            dispatch(function() use ($confirmOrder, $pf, $order_id) {
+                if($confirmOrder == 1) {
+                    $pf->post('orders/@' . $order_id . '/confirm' );
+                }
+            });
         });
     }
 }
