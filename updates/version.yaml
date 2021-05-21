@@ -29,3 +29,7 @@
     - pushed api requests to a queue job.
     - Added env variable to determine if products should sync on save.
     - Updated README.md
+1.1.12:
+    - Update print placement fields to automatically remove based on selection
+    - added validation rules to printful_variant_id and printful_variant_placements
+    - added triggers to each repeater field. (Disables when printful_variant_id is set to 'None'
