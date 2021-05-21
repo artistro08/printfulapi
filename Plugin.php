@@ -2,6 +2,7 @@
 
 
 use DB;
+use October\Rain\Exception\ValidationException;
 use Illuminate\Support\Facades\Event;
 use OFFLINE\Mall\Models\Product as ProductModel;
 use Offline\Mall\Controllers\Products as ProductsController;
@@ -57,6 +58,7 @@ class Plugin extends PluginBase
 
     public function boot()
     {
+
 
         function getProductCatalog() {
             $apiKey = env('PRINTFUL_API_KEY', '');
@@ -191,8 +193,14 @@ class Plugin extends PluginBase
                     ];
                 }
             }
+            array_unshift($printfulVariantOptions, ['name' => 'None', 'id' => '']);
             return $printfulVariantOptions;
         }
+
+        // extend the products controller to include our js
+        ProductsController::extend(function ($controller) {
+            $controller->addJs('/plugins/artistro08/printfulapi/assets/js/app.js');
+        });
 
 
         // extend the product model for multiple file uploads and jsonable properties
@@ -224,6 +232,21 @@ class Plugin extends PluginBase
         VariantModel::extend(function($model) {
             $model->addJsonable('printful_variant_placements');
             $model->addJsonable('printful_variant_placement');
+            $model->rules = [
+                'printful_variant_placements.*.printful_variant_placement' => "required",
+                'printful_variant_placements' => 'required_with:printful_variant_id'
+            ];
+
+            // Throw error if the print placement field isn't set.
+            $model->bindEvent('model.afterValidate', function () use ($model) {
+                foreach ($model->errors()->all() as $error) {
+                    if(str_contains($error, 'printful_variant_placements.')){
+                        throw new ValidationException([
+                            'printful_variant_placements' => 'Please make sure each Variant Placement item has a Print Placement set'
+                        ]);
+                    }
+                }
+            });
         });
 
         ProductsController::extendFormFields(function($form, $model){
@@ -231,26 +254,28 @@ class Plugin extends PluginBase
             if(!$model instanceof ProductModel)
                 return;
 
-            $form->addTabFields([
-                'printful_product_id' => [
-                    'label'       => 'Printful Product',
-                    'tab'         => 'Printful',
-                    'type'        => 'dropdown',
-                    'options'     =>  array_pluck(getProductCatalog(),'name','id'),
-                    'span'        => 'left',
-                    'comment'     => 'Set the global product type. <br><br> WARNING, changing this will reset all variants',
-                    'commentHtml' => true,
+            if(!$form->isNested) {
+                $form->addTabFields([
+                    'printful_product_id' => [
+                        'label'       => 'Printful Product',
+                        'tab'         => 'Printful',
+                        'type'        => 'dropdown',
+                        'options'     =>  array_pluck(getProductCatalog(),'name','id'),
+                        'span'        => 'left',
+                        'comment'     => 'Set the global product type. <br><br> WARNING, changing this will reset all variants',
+                        'commentHtml' => true,
 
-                ],
-                'print_files' => [
-                    'label'        => 'Print Files',
-                    'tab'          => 'Printful',
-                    'type'         => 'fileupload',
-                    'fileTypes'    => 'png,jpg,pdf,ai,eps,tiff',
-                    'commentAbove' => 'Set the global print files. JPG, PNG, PDF, and AI are supported',
-                    'span'         => 'right'
-                ],
-            ]);
+                    ],
+                    'print_files' => [
+                        'label'        => 'Print Files',
+                        'tab'          => 'Printful',
+                        'type'         => 'fileupload',
+                        'fileTypes'    => 'png,jpg,pdf,ai,eps,tiff',
+                        'commentAbove' => 'Set the global print files. JPG, PNG, PDF, and AI are supported',
+                        'span'         => 'right'
+                    ],
+                ]);
+            }
         });
 
         // Add columns to product backend to quickly see if product is set
@@ -286,23 +311,35 @@ class Plugin extends PluginBase
                     'printful_variant_placements' => [
                         'label'     => 'Variant Placements',
                         'tab'       => 'Printful Variant',
-                        'dependsOn' => 'printful_variant_id',
                         'type'      => 'repeater',
-                        'minItems'  => 1,
-                        'maxItems'  => count(getProductVariantOptions()),
+                        'minItems'  => 0,
+                        'maxItems'  => count(getProductVariantOptions()) - 1,
                         'form'      => [
                             'fields' => [
                                 'printful_variant_placement' => [
                                     'label'   => 'Print Placement',
                                     'tab'     => 'Printful Variant',
                                     'type'    => 'dropdown',
-                                    'options' => array_pluck(getProductVariantOptions(),  'name', 'id'),
-                                    'span'    => 'left'
+                                    'trigger' => [
+                                        'action'    => 'disable',
+                                        'field'     => '^^printful_variant_id',
+                                        'condition' => 'value[]'
+                                    ],
+                                    'options'  => array_pluck(getProductVariantOptions(),  'name', 'id'),
+                                    'span'     => 'left',
+                                    'cssClass' => 'variantPlacementOptions',
+                                    'default'  => array_pluck(getProductVariantOptions(), 'id')[0],
+                                    'required' => true
                                 ],
                                 'printful_variant_printfile' => [
                                     'label'   => 'Print File',
                                     'tab'     => 'Printful Variant',
                                     'type'    => 'dropdown',
+                                    'trigger' => [
+                                        'action'    => 'disable',
+                                        'field'     => '^^printful_variant_id',
+                                        'condition' => 'value[]'
+                                    ],
                                     'options' => array_pluck(getPrintFiles(),'name','url'),
                                     'span'    => 'right'
                                 ],
@@ -312,6 +349,11 @@ class Plugin extends PluginBase
                                     'comment'     => 'An optional ID parameter for advanced users. <a href="https://www.printful.com/docs/products" target="_blank">See Docs</a>',
                                     'tab'         => 'Printful Variant',
                                     'type'        => 'text',
+                                    'trigger' => [
+                                        'action'    => 'disable',
+                                        'field'     => '^^printful_variant_id',
+                                        'condition' => 'value[]'
+                                    ],
                                     'span'        => 'left'
                                 ],
                                 'printful_variant_option_value' => [
@@ -319,6 +361,11 @@ class Plugin extends PluginBase
                                     'tab'       => 'Printful Variant',
                                     'comment'   => 'An optional value for advanced users.',
                                     'type'      => 'text',
+                                    'trigger' => [
+                                        'action'    => 'disable',
+                                        'field'     => '^^printful_variant_id',
+                                        'condition' => 'value[]'
+                                    ],
                                     'span'      => 'right'
                                 ],
                             ]
