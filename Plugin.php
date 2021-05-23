@@ -193,7 +193,6 @@ class Plugin extends PluginBase
                     ];
                 }
             }
-            array_unshift($printfulVariantOptions, ['name' => 'None', 'id' => '']);
             return $printfulVariantOptions;
         }
 
@@ -240,9 +239,14 @@ class Plugin extends PluginBase
             // Throw error if the print placement field isn't set.
             $model->bindEvent('model.afterValidate', function () use ($model) {
                 foreach ($model->errors()->all() as $error) {
+//                    dd($error);
                     if(str_contains($error, 'printful_variant_placements.')){
                         throw new ValidationException([
-                            'printful_variant_placements' => 'Please make sure each Variant Placement item has a Print Placement set'
+                            'printful_variant_placements' => 'Please make sure each Variant Placement item has a Print Placement set and none are the same.'
+                        ]);
+                    } elseif (str_contains($error, 'The Variant Placements field is required when Printful Variant is present.')) {
+                        throw new ValidationException([
+                            'printful_variant_placements' => 'Please add a Variant Placement or set the Printful Variant field to none.'
                         ]);
                     }
                 }
@@ -309,12 +313,15 @@ class Plugin extends PluginBase
                         'default' => '',
                     ],
                     'printful_variant_placements' => [
-                        'label'     => 'Variant Placements',
-                        'tab'       => 'Printful Variant',
-                        'type'      => 'repeater',
-                        'minItems'  => 0,
-                        'maxItems'  => count(getProductVariantOptions()) - 1,
-                        'form'      => [
+                        'label'        => 'Print Areas',
+                        'tab'          => 'Printful Variant',
+                        'type'         => 'repeater',
+                        'cssClass'     => 'variantRepeater',
+                        'style'        => 'default',
+                        'minItems'     => 1,
+                        'commentAbove' => 'The areas where you would like to print. Print placement areas cannot be the same.',
+                        'maxItems'     => count(getProductVariantOptions()),
+                        'form'         => [
                             'fields' => [
                                 'printful_variant_placement' => [
                                     'label'   => 'Print Placement',
@@ -329,7 +336,7 @@ class Plugin extends PluginBase
                                     'span'     => 'left',
                                     'cssClass' => 'variantPlacementOptions',
                                     'default'  => array_pluck(getProductVariantOptions(), 'id')[0],
-                                    'required' => true
+                                    'required' => true,
                                 ],
                                 'printful_variant_printfile' => [
                                     'label'   => 'Print File',

@@ -33,3 +33,8 @@
     - Update print placement fields to automatically remove based on selection
     - added validation rules to printful_variant_id and printful_variant_placements
     - added triggers to each repeater field. (Disables when printful_variant_id is set to 'None'
+1.1.13:
+    - added validation messages that make more sense
+    - Added comments to fields to help with field descriptions
+    - cleaned up code in the javascript file.
+    - fixed issue where disabled options could still be selected
