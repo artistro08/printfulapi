@@ -37,3 +37,4 @@
     - added validation messages that make more sense
     - Added comments to fields to help with field descriptions
     - cleaned up code in the javascript file.
+    - fixed issue where disabled options could still be selected
