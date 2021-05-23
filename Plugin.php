@@ -239,7 +239,6 @@ class Plugin extends PluginBase
             // Throw error if the print placement field isn't set.
             $model->bindEvent('model.afterValidate', function () use ($model) {
                 foreach ($model->errors()->all() as $error) {
-//                    dd($error);
                     if(str_contains($error, 'printful_variant_placements.')){
                         throw new ValidationException([
                             'printful_variant_placements' => 'Please make sure each Variant Placement item has a Print Placement set and none are the same.'
