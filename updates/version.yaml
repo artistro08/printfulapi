@@ -36,3 +36,4 @@
 1.1.13:
     - added validation messages that make more sense
     - Added comments to fields to help with field descriptions
+    - cleaned up code in the javascript file.
