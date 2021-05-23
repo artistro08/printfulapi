@@ -242,7 +242,7 @@ class Plugin extends PluginBase
 //                    dd($error);
                     if(str_contains($error, 'printful_variant_placements.')){
                         throw new ValidationException([
-                            'printful_variant_placements' => 'Please make sure each Variant Placement item has a Print Placement set'
+                            'printful_variant_placements' => 'Please make sure each Variant Placement item has a Print Placement set and none are the same.'
                         ]);
                     } elseif (str_contains($error, 'The Variant Placements field is required when Printful Variant is present.')) {
                         throw new ValidationException([
