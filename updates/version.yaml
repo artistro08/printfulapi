@@ -40,3 +40,5 @@
     - fixed issue where disabled options could still be selected
 1.1.14:
     - Removed remnant code
+1.1.15:
+    - Fix bug where wrong items would be displayed in variant optons

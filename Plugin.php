@@ -112,7 +112,7 @@ class Plugin extends PluginBase
                 // attempt to load from cache
                 $pfVariants = Cache::get('printful_variants');
 
-                if(!$pfVariants) {
+                if(!Cache::has('printful_variants')) {
                     // no cache found, fetch new
                     $pfVariants = $pf->get('/products' . '/' . $printfulProductID);
 
@@ -177,16 +177,21 @@ class Plugin extends PluginBase
 
                 $pfVariantOptions = Cache::get('printful_variant_options');
 
-                if(!$pfVariantOptions) {
+
+                if(!Cache::has('printful_variant_options')) {
+
                     // no cache found, fetch new
                     $pfVariantOptions = $pf->get('/products' . '/' . $printfulProductID);
 
+
                     // cache for 30 days
                     Cache::put('printful_variant_options',$pfVariantOptions,2592000);
+
                 }
 
 
                 foreach ($pfVariantOptions['product']['files'] as $pfVariantOption) {
+
                     $printfulVariantOptions[] = [
                         'id'   => $pfVariantOption['type'],
                         'name' => $pfVariantOption['title'],
@@ -479,6 +484,15 @@ class Plugin extends PluginBase
                     $pf->post('orders/@' . $order_id . '/confirm' );
                 }
             });
+        });
+
+        // Remove cache for variant options on page load.
+        Event::listen('backend.page.beforeDisplay', function ($backendController, $action, $params) {
+            if(class_basename($backendController) == 'Products') {
+                if($action == 'update') {
+                    Cache::forget('printful_variants');
+                }
+            }
         });
     }
 }
