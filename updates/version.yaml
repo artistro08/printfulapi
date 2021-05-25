@@ -44,3 +44,4 @@
     - Fix bug where wrong items would be displayed in variant optons
 1.1.16:
     - Fix issue where plugin wouldn't refresh on remove correctly.
+1.1.17: Added MIT License
