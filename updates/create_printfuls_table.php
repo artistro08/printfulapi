@@ -45,12 +45,12 @@ class CreatePrintfulsTable extends Migration
                 $table->dropColumn('printful_variant_printfile');
             });
         }
-        if (Schema::hasColumn('offline_mall_product_variants', 'printful_variant_color')) {
+        if (Schema::hasColumn('offline_mall_product_variants', 'printful_variant_option_id')) {
             Schema::table('offline_mall_product_variants', function ($table) {
                 $table->dropColumn('printful_variant_option_id');
             });
         }
-        if (Schema::hasColumn('offline_mall_product_variants', 'printful_variant_color')) {
+        if (Schema::hasColumn('offline_mall_product_variants', 'printful_variant_option_value')) {
             Schema::table('offline_mall_product_variants', function ($table) {
                 $table->dropColumn('printful_variant_option_value');
             });
