@@ -45,3 +45,4 @@
 1.1.16:
     - Fix issue where plugin wouldn't refresh on remove correctly.
 1.1.17: Added MIT License
+1.1.18: fixed a bug where the sync command would time out if a new product was being synced

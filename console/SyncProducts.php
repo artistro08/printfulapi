@@ -129,6 +129,7 @@ class SyncProducts extends Command
                 if($e->getCode() == '404') {
 
                     // if product doesn't exist, create
+                    sleep(7);
                     $creationParams  = SyncProductCreationParameters::fromArray([
                         'sync_product'  => [
                             'external_id' => $product->id,     // set id in my store for this product (optional)
@@ -139,7 +140,6 @@ class SyncProducts extends Command
                     ]);
 
                     $productsApi->createProduct($creationParams);
-                    sleep(7);
                 }
                 else {
                     // shit out of luck..
